@@ -1,6 +1,8 @@
 # Ambient Noise Generator & Evaluation
 Last modified 23 April 2019
 
+[![Build Status](https://travis-ci.org/kura-okubo/AmbientNoiseGenerator.svg?branch=master)](https://travis-ci.org/kura-okubo/AmbientNoiseGenerator)
+
 **1. Research Subject**
 
 The aim of this software is to generate synthetic ambient noise in physical dimension and evaluate the cross-correlation function for the structural monitoring.
