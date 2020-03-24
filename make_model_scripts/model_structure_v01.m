@@ -29,26 +29,27 @@ Time_ID = [1, 2]; %ID of time period for changing v over time;
 init_day = [1, 5]; %init julian day of each time period
 end_day = [5, 10]; %end julian day of each time period
 
-%velocity
+%velocity%
 dv_V=-0.02; %for dv/V test; true value
 
-v0 = [3333, (1+dv_V)*3333]; %[m/s]
+%v0 = [3333, (1+dv_V)*3333]; %[m/s]
+v0 = [3333, 3333]; %[m/s]
 IsDispersion = 1;
 Dispersion_tickness = [10e3, 10e3]; %[m]
 
 %scatter
 scatter_pattern = "random";
 scatter_randomseed = [12, 12];
-scatter_num = 50;
+scatter_num = 60;
 scatter_mindist= 8e3; % [m]minimum distance between scattering point
-scatter_meanstrength = [4e7, 4e7] %[6e7, 6e7];
+scatter_meanstrength = [4e7, 4e7]; %[6e7, 6e7];
 scatter_variance = 0.1 .* scatter_meanstrength;
 
 %attenuation
 IsAttenuation = 1;
-Q = [1e8, 1e8]; %[250, 250];
+Q = [500, 250]; %[250, 250];
 
-problem_name='../EXAMPLE/multi4_source';
+problem_name='../EXAMPLE/coda_test';
 
 SaveFigure = 1;
 

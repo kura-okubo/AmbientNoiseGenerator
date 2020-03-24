@@ -36,14 +36,14 @@ Ls = 50e3; %radius of noise source location (m)
 Ls_centre = [150e3, 150e3];
 
 %for receiver
-NumofReceiver = 5; %10
-Lx = 100e3; %radius of receiver location (m)
+NumofReceiver = 10; %10
+Lx = 50e3; %radius of receiver location (m)
 Lx_centre = [0, 0];
 
 randomseed_s = 5; %random seed for source locations
 randomseed_r = 13; %random seed for receiver locations
 
-problem_name='../EXAMPLE/multi4_source';
+problem_name='../EXAMPLE/coda_test';
 
 SaveFigure = 1;
 %----------------------%

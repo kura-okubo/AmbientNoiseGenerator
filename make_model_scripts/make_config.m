@@ -22,7 +22,7 @@ set(0,'defaulttextinterpreter','latex')
 %This script makes configure file for ambient noise modeling
 
 %---Model Parameters---%
-problem_name='../EXAMPLE/multi4_source';
+problem_name='../EXAMPLE/coda_test';
 
 %input_filenames
 in_source = "source_loc.in";

@@ -22,19 +22,19 @@ set(0,'DefaultTextFontsize',18, ...
 set(0,'defaulttextinterpreter','tex')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-problem_name = "multi4_source";
+problem_name = "coda_test";
 
 Time_ID = [1];
-Day_ID = [1:2];
-Unit_ID = [1:12];
+Day_ID = [1:1];
+Unit_ID = [1:24];
 
 %for plotting
 SaveFigure = 1;
 
 
-f_inputdir = "../EXAMPLE/"+problem_name+"/OUTPUT_FILES/";
+f_inputdir = "../EXAMPLE/"+problem_name+"/OUTPUT_FILES_ID1/";
 
-Figdir = "../EXAMPLE/"+problem_name+"/OUTPUT_FILES/figs";
+Figdir = "../EXAMPLE/"+problem_name+"/OUTPUT_FILES_ID1/figs";
 FileFormat = 'png';
 
 fiCC1 = f_inputdir+"CC1.h5";
@@ -162,7 +162,8 @@ for i = 1:NumofStack
     plot(CC1_lagtime, sum(CC1stack(:, 1:i), 2)./ C1_Normalize ./StackNum, '-', 'Color', cmap(i, :));
 
     ax1 = gca;
-    XLimit = [-60, 60];
+    %XLimit = [-60, 60];
+    XLimit = [0, 60];
     YLimit = [-1, 1];
 
     ax1.XLim = XLimit;

@@ -11,7 +11,8 @@ include("./lib/receiverdata.jl")
 include("./lib/synthesis_wave.jl")
 
 using Revise
-using Printf, LinearAlgebra, FFTW, PlotlyJS, Dierckx, Random, Distributions, ORCA, DSP,  HDF5, BenchmarkTools, ProgressMeter
+using Printf, LinearAlgebra, FFTW, PlotlyJS, Dierckx, Random, Distributions, DSP,  HDF5, BenchmarkTools, ProgressMeter
+using ORCA
 import .Readfile, .GFandSource, .ReceiverData, .Synthesis_wave
 
 
@@ -78,7 +79,7 @@ function main(;problem_name::String)
                     recgroup[icount, 1] = k
                     recgroup[icount, 2] = i
                     recgroup[icount, 3] = j
-                    
+
                     icount += 1
                     recgroup[icount, 1] = j
                     recgroup[icount, 2] = k
@@ -91,7 +92,7 @@ function main(;problem_name::String)
 
     #Time info
 
-    NumofSynthesize_unit = round(Int64, 24 * 60 * 60 / config.Synthesize_unit_duration) 
+    NumofSynthesize_unit = round(Int64, 24 * 60 * 60 / config.Synthesize_unit_duration)
 
     T = config.T_for_gf # compute time for green's function between source and receivers [s]
     Synthesize_unit_duration = config.Synthesize_unit_duration; #every this unit the signal is synthesized
@@ -102,7 +103,7 @@ function main(;problem_name::String)
     omega = 2*pi.*(fs*(0:(NT/2))/NT); #0 -> fnyq
     t_trace = dt .* range(0, stop=round(Int64, Synthesize_unit_duration./dt)-1)
     #define random source activate time: this is constant for all receivers
-    maxT = Synthesize_unit_duration - T #avoid truncated at the end of unit duration 
+    maxT = Synthesize_unit_duration - T #avoid truncated at the end of unit duration
 
     t_cc = dt .* range(-(length(t_trace)-1), stop=length(t_trace)-1)
 
@@ -160,8 +161,8 @@ function main(;problem_name::String)
         randseeds = rand(rng, 1:999999, NumofDay_per_TimeID*NumofSynthesize_unit);
 
         #for Day_ID = config.init_day[Time_ID]:config.end_day[Time_ID]
-        for Day_ID = config.init_day[Time_ID]:2
-            
+        for (iday, Day_ID) = enumerate(config.init_day[Time_ID]:6)
+
             #Day_ID = 1 # day
             println("#-----------------#")
             println(@sprintf("Day %4d", Day_ID))
@@ -170,19 +171,20 @@ function main(;problem_name::String)
             #------------------------#
             #---Source Randomness---#
             #------------------------#
-           
+
             #Progress Bar
+            #prog = Progress(NumofSynthesize_unit, 1.0)
             prog = Progress(12, 1.0)
 
-            #for Synthesize_unit_ID = 1:NumofSynthesize_unit
-            for Synthesize_unit_ID = 1:12
+            for Synthesize_unit_ID = 1:NumofSynthesize_unit
+            #for Synthesize_unit_ID = 1:12
 
-                Random.seed!(randseeds[(Day_ID-1)*NumofSynthesize_unit+Synthesize_unit_ID]); #This should be random for each Syntesize unit duration
+                Random.seed!(randseeds[(iday-1)*NumofSynthesize_unit+Synthesize_unit_ID]); #This should be random for each Syntesize unit duration
                 source_activatetime = rand(Uniform(0, maxT), sourceloc.numofsource, config.Source_average_num_per_unithour);
 
                 #Source fM is distributed Gaussian in log scale
                 rng = Normal(log10(config.Source_peakfreq_mean), abs(0.01*config.Source_peakfreq_variance*log10(config.Source_peakfreq_mean)))
-                Random.seed!(randseeds[(Day_ID-1)*NumofSynthesize_unit+Synthesize_unit_ID]);
+                Random.seed!(randseeds[(iday-1)*NumofSynthesize_unit+Synthesize_unit_ID]);
                 fMrand = 10.0.^(rand(rng, sourceloc.numofsource * config.Source_average_num_per_unithour)[:]);
                 write(hdf5_o_C1, @sprintf("fMrand/TimeID%02d/Day%04d/UnitID%04d/",Time_ID, Day_ID, Synthesize_unit_ID), fMrand)
 
@@ -203,7 +205,7 @@ function main(;problem_name::String)
                     attrs(g1)["fs"] = fs
                     attrs(g1)["r1x"] = receiverdata[i].loc_x
                     attrs(g1)["r1y"] = receiverdata[i].loc_y
-                    
+
                 end
 
                 #initialize C1 struct
@@ -226,8 +228,8 @@ function main(;problem_name::String)
 
                     #compute cc1
                     #filtering traces
-                    rec1_u_origin = receiverdata[C1data[i].Receiver_1].u 
-                    rec2_u_origin = receiverdata[C1data[i].Receiver_2].u 
+                    rec1_u_origin = receiverdata[C1data[i].Receiver_1].u
+                    rec2_u_origin = receiverdata[C1data[i].Receiver_2].u
 
 
                     #--------------------------------#
@@ -246,7 +248,7 @@ function main(;problem_name::String)
                     #--------------------------------#
                     rec1_u = rec1_u_origin
                     rec2_u = rec2_u_origin
-                    
+
                     #fft
 
                     rec1_FU = fft(rec1_u)
@@ -289,16 +291,16 @@ function main(;problem_name::String)
                         #rec2_FU = GFandSource.whiten(real.(ifft(rec2_FU)), freqmin, freqmax, fs, pad=50)
 
                         for j = 1:C1data[i].nt
-                                
+
                     	        cc1_12_pos[j] = conj(rec1_FU[j]) * rec2_FU[j] / (abs(rec1_FU[j]) * abs(rec2_FU[j]))
                     	        cc1_12_neg[j] = rec1_FU[j] * conj(rec2_FU[j]) / (abs(rec1_FU[j]) * abs(rec2_FU[j]))
                         end
 
                     else
-                        
+
                         for j = 1:C1data[i].nt
 
-                                cc1_12_pos[j] = conj(rec1_FU[j]) * rec2_FU[j] 
+                                cc1_12_pos[j] = conj(rec1_FU[j]) * rec2_FU[j]
                                 cc1_12_neg[j] = rec1_FU[j] * conj(rec2_FU[j])
 
                         end
@@ -307,7 +309,7 @@ function main(;problem_name::String)
                 	# plot along azimuth
                 	t_cc = dt .* range(-(C1data[i].nt-1), stop=C1data[i].nt-1)
 
-                	cc1_12_temp = vcat(ifft(cc1_12_neg)[end:-1:2], ifft(cc1_12_pos)) 
+                	cc1_12_temp = vcat(ifft(cc1_12_neg)[end:-1:2], ifft(cc1_12_pos))
                 	#signal_magnification = 5*1/maximum(real.(cc1_12_temp))
 
                     C1data[i].lag_t = t_cc
@@ -315,16 +317,16 @@ function main(;problem_name::String)
 
                 end
 
-              
+
                 #-----Save CC1----#
                 #recpair
                 for i=1:NumofRecPair
-                        
+
                     name_o = @sprintf("TimeID%02d/Day%04d/UnitID%04d/CC1.%02d-%02d", Time_ID, Day_ID, Synthesize_unit_ID, C1data[i].Receiver_1,   C1data[i].Receiver_2)
 
                     g1 = g_create(hdf5_o_C1, name_o)
 
-                    g1["CC1"] = C1data[i].cc1 
+                    g1["CC1"] = C1data[i].cc1
 
                     attrs(g1)["fs"] = fs
                     attrs(g1)["Receiver_1"] = C1data[i].Receiver_1
@@ -365,13 +367,13 @@ function main(;problem_name::String)
                     C2data[i].nt    = length(t_trace)
 
                 	t_cc = dt .* range(-(C2data[i].nt-1), stop=C2data[i].nt-1)
-                    C2data[i].lag_t = t_cc 
+                    C2data[i].lag_t = t_cc
 
                     #compute cc1
                     #filtering traces
-                    recv_u_origin = receiverdata[C2data[i].Receiver_v].u 
-                    rec1_u_origin = receiverdata[C2data[i].Receiver_1].u 
-                    rec2_u_origin = receiverdata[C2data[i].Receiver_2].u 
+                    recv_u_origin = receiverdata[C2data[i].Receiver_v].u
+                    rec1_u_origin = receiverdata[C2data[i].Receiver_1].u
+                    rec2_u_origin = receiverdata[C2data[i].Receiver_2].u
 
                     #--------------------------------#
                     #---Filtering original traces----#
@@ -391,7 +393,7 @@ function main(;problem_name::String)
                     recv_u = recv_u_origin
                     rec1_u = rec1_u_origin
                     rec2_u = rec2_u_origin
-                    
+
                     #fft
 
                     recv_FU = fft(recv_u)
@@ -408,7 +410,7 @@ function main(;problem_name::String)
                     if config.IsSpectralNormalization
 
                         for j = 1:C2data[i].nt
-                            
+
                             cc1_v1_pos[j] = conj(recv_FU[j]) * rec1_FU[j]
                             cc1_v1_neg[j] = recv_FU[j] * conj(rec1_FU[j])
 
@@ -419,7 +421,7 @@ function main(;problem_name::String)
                     else
 
                         for j = 1:C2data[i].nt
-                        
+
                         cc1_v1_pos[j] = conj(recv_FU[j]) * rec1_FU[j]
                         cc1_v1_neg[j] = recv_FU[j] * conj(rec1_FU[j])
 
@@ -428,10 +430,10 @@ function main(;problem_name::String)
                         end
                     end
 
-                    cc1_v1_temp = vcat(ifft(cc1_v1_neg)[end:-1:2], ifft(cc1_v1_pos)) 
-                    cc1_v2_temp = vcat(ifft(cc1_v2_neg)[end:-1:2], ifft(cc1_v2_pos)) 
+                    cc1_v1_temp = vcat(ifft(cc1_v1_neg)[end:-1:2], ifft(cc1_v1_pos))
+                    cc1_v2_temp = vcat(ifft(cc1_v2_neg)[end:-1:2], ifft(cc1_v2_pos))
 
-                   
+
                     """
                     Stack positive side C2POS and negative side C2NEG
                     """
@@ -443,11 +445,11 @@ function main(;problem_name::String)
                     cc2NEG_12_pos = zeros(Complex{Float64}, C2data[i].nt)
                     cc2NEG_12_neg = zeros(Complex{Float64}, C2data[i].nt)
 
-                    
+
                     if config.IsSpectralNormalization
 
                         for j = 1:C2data[i].nt
-                            
+
                             cc2POS_12_pos[j] = conj(cc1_v1_pos[j]) * cc1_v2_pos[j] / (abs(cc1_v1_pos[j]) * abs(cc1_v2_pos[j]))
                             cc2POS_12_neg[j] = cc1_v1_pos[j] * conj(cc1_v2_pos[j]) / (abs(cc1_v1_pos[j]) * abs(cc1_v2_pos[j]))
 
@@ -457,8 +459,8 @@ function main(;problem_name::String)
 
                     else
                         for j = 1:C2data[i].nt
-                            
-                            cc2POS_12_pos[j] = conj(cc1_v1_pos[j]) * cc1_v2_pos[j] 
+
+                            cc2POS_12_pos[j] = conj(cc1_v1_pos[j]) * cc1_v2_pos[j]
                             cc2POS_12_neg[j] = cc1_v1_pos[j] * conj(cc1_v2_pos[j])
 
                             cc2NEG_12_pos[j] = conj(cc1_v1_neg[j]) * cc1_v2_neg[j]
@@ -497,7 +499,7 @@ function main(;problem_name::String)
                 end
 
                 """
-                Exercise 3: C3 
+                Exercise 3: C3
                 """
                 #initialize C3 struct
                 C3data =Array{ReceiverData.sC3data, 1}(undef, NumofRecGroup)
@@ -524,13 +526,13 @@ function main(;problem_name::String)
                     C3data[i].nt    = length(t_trace)
 
                     t_cc = dt .* range(-(C3data[i].nt-1), stop=C3data[i].nt-1)
-                    C3data[i].lag_t = t_cc 
+                    C3data[i].lag_t = t_cc
 
                     #compute cc1
                     #filtering traces
-                    recv_u_origin = receiverdata[C3data[i].Receiver_v].u 
-                    rec1_u_origin = receiverdata[C3data[i].Receiver_1].u 
-                    rec2_u_origin = receiverdata[C3data[i].Receiver_2].u 
+                    recv_u_origin = receiverdata[C3data[i].Receiver_v].u
+                    rec1_u_origin = receiverdata[C3data[i].Receiver_1].u
+                    rec2_u_origin = receiverdata[C3data[i].Receiver_2].u
 
                     #--------------------------------#
                     #---Filtering original traces----#
@@ -550,7 +552,7 @@ function main(;problem_name::String)
                     recv_u = recv_u_origin
                     rec1_u = rec1_u_origin
                     rec2_u = rec2_u_origin
-                    
+
                     #fft
 
                     recv_FU = fft(recv_u)
@@ -567,24 +569,24 @@ function main(;problem_name::String)
                     if config.IsSpectralNormalization
 
                         for j = 1:C3data[i].nt
-                            
+
                             cc1_v1_pos[j] = conj(recv_FU[j]) * rec1_FU[j] / (abs(recv_FU[j]) * abs(rec1_FU[j]))
                             cc1_v1_neg[j] = recv_FU[j] * conj(rec1_FU[j]) / (abs(recv_FU[j]) * abs(rec1_FU[j]))
 
                             cc1_v2_pos[j] = conj(recv_FU[j]) * rec2_FU[j] / (abs(recv_FU[j]) * abs(rec2_FU[j]))
                             cc1_v2_neg[j] = recv_FU[j] * conj(rec2_FU[j]) / (abs(recv_FU[j]) * abs(rec2_FU[j]))
 
-                            #cc1_v1_pos[j] = conj(recv_FU[j]) * rec1_FU[j] 
-                            #cc1_v1_neg[j] = recv_FU[j] * conj(rec1_FU[j]) 
+                            #cc1_v1_pos[j] = conj(recv_FU[j]) * rec1_FU[j]
+                            #cc1_v1_neg[j] = recv_FU[j] * conj(rec1_FU[j])
 
-                            #cc1_v2_pos[j] = conj(recv_FU[j]) * rec2_FU[j] 
-                            #cc1_v2_neg[j] = recv_FU[j] * conj(rec2_FU[j]) 
+                            #cc1_v2_pos[j] = conj(recv_FU[j]) * rec2_FU[j]
+                            #cc1_v2_neg[j] = recv_FU[j] * conj(rec2_FU[j])
 
                         end
 
                     else
                         for j = 1:C3data[i].nt
-                            
+
                             cc1_v1_pos[j] = conj(recv_FU[j]) * rec1_FU[j]
                             cc1_v1_neg[j] = recv_FU[j] * conj(rec1_FU[j])
 
@@ -645,7 +647,7 @@ function main(;problem_name::String)
 
                     #check windowed signal
                     cc1_v2_temp_windowed = real.(vcat(cc1_v2_neg_windowing[end:-1:2], cc1_v2_pos_windowing))
-                    
+
                     cc1_v2_pos = fft(cc1_v2_pos_windowing)
                     cc1_v2_neg = fft(cc1_v2_neg_windowing)
 
@@ -676,7 +678,7 @@ function main(;problem_name::String)
 
                     if config.IsSpectralNormalization
                         for j = 1:C3data[i].nt
-                            
+
                             cc3POS_12_pos[j] = conj(cc1_v1_pos[j]) * cc1_v2_pos[j] / (abs(cc1_v1_pos[j]) * abs(cc1_v2_pos[j]))
                             cc3POS_12_neg[j] = cc1_v1_pos[j] * conj(cc1_v2_pos[j]) / (abs(cc1_v1_pos[j]) * abs(cc1_v2_pos[j]))
 
@@ -684,9 +686,9 @@ function main(;problem_name::String)
                             cc3NEG_12_neg[j] = cc1_v1_neg[j] * conj(cc1_v2_neg[j]) / (abs(cc1_v1_neg[j]) * abs(cc1_v2_neg[j]))
                         end
                     else
-                        
+
                         for j = 1:C3data[i].nt
-                            
+
                             cc3POS_12_pos[j] = conj(cc1_v1_pos[j]) * cc1_v2_pos[j]
                             cc3POS_12_neg[j] = cc1_v1_pos[j] * conj(cc1_v2_pos[j])
 
@@ -727,7 +729,7 @@ function main(;problem_name::String)
 
 
                 end
-                
+
                 #progress bar
                 next!(prog)
 
@@ -743,6 +745,4 @@ function main(;problem_name::String)
 end
 
 #Run the main program
-main(problem_name="../EXAMPLE/" * "multi4_source";)
-
-
+main(problem_name="../EXAMPLE/" * "coda_test";)
